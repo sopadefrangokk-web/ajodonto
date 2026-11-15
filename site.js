@@ -341,7 +341,7 @@ footer{background:#261c14;color:#cbbbaa;padding:4rem 0 0}
 /* reveal */
 .reveal{opacity:0;transform:translateY(34px);transition:opacity 1s ease,transform 1s ease}
 .reveal.visible{opacity:1;transform:none}
-.stagger{opacity:0;transform:translateY(24px);transition:opacity .8s ease,transform .8s ease}
+.stagger{opacity:1;transform:none;transition:opacity .8s ease,transform .8s ease}
 .stagger.visible{opacity:1;transform:none}
 
 @media(max-width:1000px){
