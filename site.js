@@ -7,6 +7,22 @@
   'use strict';
 
   // --------------------------------------------------------------------------
+  // SUPABASE CONFIG (embutido no site.js)
+  // --------------------------------------------------------------------------
+  const SUPABASE_CONFIG = {
+    url: 'https://qfwalhfftbesjobruiyu.supabase.co',
+    anonKey: 'sb_publishable_HIAhuKD4KSEkglM19vgSMw_2Q5wNpWr'
+  };
+
+  // Injetar CDN do Supabase no head
+  (function injectSupabase() {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+    s.async = true;
+    document.head.appendChild(s);
+  })();
+
+  // --------------------------------------------------------------------------
   // 1) CSS completo (estética sofisticada, glassmorphism, animações)
   // --------------------------------------------------------------------------
   const css = `
@@ -787,18 +803,64 @@ footer{background:#261c14;color:#cbbbaa;padding:4rem 0 0}
   if (todayRow) todayRow.classList.add('today');
 
   // formulário -> WhatsApp
-  document.getElementById('contactForm').addEventListener('submit', function (e) {
+  // formulário -> Supabase + WhatsApp
+  document.getElementById('contactForm').addEventListener('submit', async function (e) {
     e.preventDefault();
+    const btn = this.querySelector('button[type="submit"]');
+    const btnOriginalText = btn.textContent;
+    btn.textContent = 'Enviando…';
+    btn.disabled = true;
+
     const nome = document.getElementById('nome').value.trim();
     const tel  = document.getElementById('tel').value.trim();
     const esp  = document.getElementById('esp').value;
     const msg  = document.getElementById('msg').value.trim();
-    let text = 'Olá! Me chamo *' + nome + '* 😊\n'
-             + '📞 Telefone: ' + tel + '\n'
-             + '🦷 Interesse: ' + esp;
-    if (msg) text += '\n💬 ' + msg;
-    text += '\n\n(Vim pelo site da AJ Odontologia)';
-    window.open('https://wa.me/5588992199494?text=' + encodeURIComponent(text), '_blank');
+
+    try {
+      // Aguardar o Supabase client estar disponível
+      await new Promise(resolve => {
+        const check = () => {
+          if (window.supabaseClient) resolve();
+          else setTimeout(check, 50);
+        };
+        check();
+      });
+
+      const supabase = window.supabaseClient.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+
+      // Salvar no Supabase
+      const { error } = await supabase
+        .from('contatos')
+        .insert([{ nome, telefone: tel, especialidade: esp, mensagem: msg }]);
+
+      if (error) throw error;
+
+      // Enviar pelo WhatsApp
+      let text = 'Olá! Me chamo *' + nome + '* 😊\n'
+               + '📞 Telefone: ' + tel + '\n'
+               + '🦷 Interesse: ' + esp;
+      if (msg) text += '\n💬 ' + msg;
+      text += '\n\n(Vim pelo site da AJ Odontologia)';
+      window.open('https://wa.me/5588992199494?text=' + encodeURIComponent(text), '_blank');
+
+      // Sucesso
+      document.getElementById('contactForm').reset();
+      btn.textContent = 'Enviado com sucesso!';
+      setTimeout(() => { btn.textContent = btnOriginalText; btn.disabled = false; }, 2000);
+
+    } catch (err) {
+      console.error('Erro Supabase:', err);
+      btn.textContent = 'Erro ao salvar';
+      setTimeout(() => { btn.textContent = btnOriginalText; btn.disabled = false; }, 2000);
+
+      // Mesmo com erro, ainda tenta WhatsApp
+      let text = 'Olá! Me chamo *' + nome + '* 😊\n'
+               + '📞 Telefone: ' + tel + '\n'
+               + '🦷 Interesse: ' + esp;
+      if (msg) text += '\n💬 ' + msg;
+      text += '\n\n(Vim pelo site da AJ Odontologia)';
+      window.open('https://wa.me/5588992199494?text=' + encodeURIComponent(text), '_blank');
+    }
   });
 
   // ===== CARROSSEL INFINITO - Loop perfeito, sem salto =====

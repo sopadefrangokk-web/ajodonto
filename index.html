@@ -8,6 +8,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
 <style>
   :root{
     --amber:#b8860b;
@@ -771,19 +773,55 @@
   const todayRow = document.querySelector('#hoursTable tr[data-day="' + day + '"]');
   if (todayRow) todayRow.classList.add('today');
 
-  // formulário -> WhatsApp
-  document.getElementById('contactForm').addEventListener('submit', function (e) {
+  // formulário -> Supabase + WhatsApp
+  const supabase = supabaseClient.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+
+  document.getElementById('contactForm').addEventListener('submit', async function (e) {
     e.preventDefault();
+    const btn = this.querySelector('button[type="submit"]');
+    const btnOriginalText = btn.textContent;
+    btn.textContent = 'Enviando…';
+    btn.disabled = true;
+
     const nome = document.getElementById('nome').value.trim();
     const tel  = document.getElementById('tel').value.trim();
     const esp  = document.getElementById('esp').value;
     const msg  = document.getElementById('msg').value.trim();
-    let text = 'Olá! Me chamo *' + nome + '* 😊\n'
-             + '📞 Telefone: ' + tel + '\n'
-             + '🦷 Interesse: ' + esp;
-    if (msg) text += '\n💬 ' + msg;
-    text += '\n\n(Vim pelo site da AJ Odontologia)';
-    window.open('https://wa.me/5588992199494?text=' + encodeURIComponent(text), '_blank');
+
+    try {
+      // Salvar no Supabase
+      const { error } = await supabase
+        .from('contatos')
+        .insert([{ nome, telefone: tel, especialidade: esp, mensagem: msg }]);
+
+      if (error) throw error;
+
+      // Enviar pelo WhatsApp
+      let text = 'Olá! Me chamo *' + nome + '* 😊\n'
+               + '📞 Telefone: ' + tel + '\n'
+               + '🦷 Interesse: ' + esp;
+      if (msg) text += '\n💬 ' + msg;
+      text += '\n\n(Vim pelo site da AJ Odontologia)';
+      window.open('https://wa.me/5588992199494?text=' + encodeURIComponent(text), '_blank');
+
+      // Sucesso
+      document.getElementById('contactForm').reset();
+      btn.textContent = 'Enviado com sucesso!';
+      setTimeout(() => { btn.textContent = btnOriginalText; btn.disabled = false; }, 2000);
+
+    } catch (err) {
+      console.error('Erro Supabase:', err);
+      btn.textContent = 'Erro ao salvar';
+      setTimeout(() => { btn.textContent = btnOriginalText; btn.disabled = false; }, 2000);
+
+      // Mesmo com erro, ainda tenta WhatsApp
+      let text = 'Olá! Me chamo *' + nome + '* 😊\n'
+               + '📞 Telefone: ' + tel + '\n'
+               + '🦷 Interesse: ' + esp;
+      if (msg) text += '\n💬 ' + msg;
+      text += '\n\n(Vim pelo site da AJ Odontologia)';
+      window.open('https://wa.me/5588992199494?text=' + encodeURIComponent(text), '_blank');
+    }
   });
 
   // ===== CARROSSEL INFINITO - Loop perfeito, sem salto =====
